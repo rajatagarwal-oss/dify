@@ -14,6 +14,7 @@ jobs:
     defaults:
       run:
         shell: bash
+
     strategy:
       matrix:
         python-version:
@@ -61,11 +62,11 @@ jobs:
             sandbox
             ssrf_proxy
 
-      - name: setup test config
+      - name: Setup test config
         run: |
           cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
-      - name: Run API Tests
+      - name: Run API Tests with Coverage
         env:
           STORAGE_TYPE: opendal
           OPENDAL_SCHEME: fs
@@ -73,6 +74,9 @@ jobs:
         run: |
           uv run --project api pytest \
             --timeout "${PYTEST_TIMEOUT:-180}" \
+            --cov=api/controllers \
+            --cov-report=xml \
+            --cov-report=json \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \
             api/tests/test_containers_integration_tests \
@@ -82,24 +86,20 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
+          flags: api-controllers
           fail_ci_if_error: true
-          flags: api-tests
+          verbose: true
+        env:
+          CODECOV_PR: ${{ github.event.pull_request.number }}
+          CODECOV_BRANCH: ${{ github.head_ref }}
+          CODECOV_BASE_BRANCH: ${{ github.base_ref }}
 
       - name: Coverage Summary
         run: |
           set -x
-          # Extract coverage percentage and create a summary
           TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
 
-          # Create a detailed coverage summary
-          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
-          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
-          {
-            echo ""
-            echo "<details><summary>File-level coverage (click to expand)</summary>"
-            echo ""
-            echo '```'
-            uv run --project api coverage report -m
-            echo '```'
-            echo "</details>"
-          } >> $GITHUB_STEP_SUMMARY
+          echo "### API Controllers Coverage Summary 🧪" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage (api/controllers): ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📈 Coverage graph & diff available in Codecov PR comment" >> $GITHUB_STEP_SUMMARY
