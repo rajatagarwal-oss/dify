@@ -78,6 +78,13 @@ jobs:
             api/tests/test_containers_integration_tests \
             api/tests/unit_tests
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
+          flags: api-tests
+
       - name: Coverage Summary
         run: |
           set -x
